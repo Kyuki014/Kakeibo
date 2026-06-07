@@ -80,15 +80,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
 .legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:10px 0 18px;font-size:12px;color:var(--text2)}
 .legend span{display:flex;align-items:center;gap:5px}
 .legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
-
-/* sync bar */
 .sync-bar{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--bg2);border-bottom:0.5px solid var(--border);font-size:12px;color:var(--text2);flex-shrink:0}
 .sync-bar i{font-size:16px}
 .sync-status{flex:1}
 .sync-btn{background:none;border:0.5px solid var(--border2);border-radius:99px;padding:3px 12px;cursor:pointer;font-size:12px;color:var(--text2);font-family:inherit;white-space:nowrap}
 .sync-btn:disabled{opacity:.5;cursor:not-allowed}
-
-/* login screen */
 #s-login{align-items:center;justify-content:center;gap:20px;padding:40px 24px;text-align:center}
 #s-login h1{font-size:28px;font-weight:700}
 #s-login p{font-size:14px;color:var(--text2);line-height:1.7}
@@ -108,7 +104,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
     <svg viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-21 0-1.3-.2-2.7-.5-4z"/><path fill="#34A853" d="M6.3 14.7l7 5.1C15 16.1 19.2 13 24 13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 16.3 2 9.7 6.4 6.3 14.7z"/><path fill="#FBBC05" d="M24 46c5.5 0 10.5-1.8 14.4-5l-6.7-5.5C29.7 37 27 38 24 38c-5 0-9.3-3-10.9-7.4l-7 5.4C9.6 41.6 16.3 46 24 46z"/><path fill="#EA4335" d="M44.5 20H24v8.5h11.8c-.9 2.6-2.6 4.7-4.9 6.1l6.7 5.5C42 36.7 45 30.9 45 24c0-1.3-.2-2.7-.5-4z"/></svg>
     Googleでログイン
   </button>
-  <p style="font-size:11px;color:var(--text3)">データはあなたのGoogleドライブのスプレッドシートに保存されます</p>
+  <p style="font-size:11px;color:var(--text3)">データはあなたのGoogleスプレッドシートに保存されます</p>
 </div>
 
 <!-- HOME -->
@@ -195,10 +191,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
 </div>
 
 <script>
-const CLIENT_ID   = '650343401495-2j3a7klr8q4lrnkd4fai7a84f7v6n3ch.apps.googleusercontent.com';
-const SHEET_ID    = '175jxK7Vr11RFD-z1F_ajTqdyGMARqwDS0be6fTtsL-c';
-const SHEET_NAME  = 'records';
-const SCOPES      = 'https://www.googleapis.com/auth/spreadsheets';
+const CLIENT_ID  = '__GOOGLE_CLIENT_ID__';
+const SHEET_ID   = '__GOOGLE_SHEET_ID__';
+const SHEET_NAME = 'records';
+const SCOPES     = 'https://www.googleapis.com/auth/spreadsheets';
 
 const EXPENSE_CATS = ['食費','交通費','日用品','外食','娯楽','医療','服飾','光熱費','通信費','その他'];
 const INCOME_CATS  = ['給与','副業','ボーナス','その他収入'];
@@ -212,19 +208,15 @@ let pieChart = null, barChart = null;
 let accessToken = null;
 let tokenClient = null;
 
-(function initMonth(){
-  const n = new Date(); viewYear = n.getFullYear(); viewMonth = n.getMonth() + 1;
-})();
+(function(){ const n=new Date(); viewYear=n.getFullYear(); viewMonth=n.getMonth()+1; })();
 
-function fmt(n){ return '¥' + Math.round(n).toLocaleString('ja-JP'); }
-function monthLabel(y,m){ return y + '年' + m + '月'; }
+function fmt(n){ return '¥'+Math.round(n).toLocaleString('ja-JP'); }
+function monthLabel(y,m){ return y+'年'+m+'月'; }
 
-// ── Google Identity Services ──────────────────────────────
 window.onload = function(){
-  google.accounts.id.initialize({ client_id: CLIENT_ID, callback: () => {} });
+  google.accounts.id.initialize({ client_id: CLIENT_ID, callback: ()=>{} });
   tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
+    client_id: CLIENT_ID, scope: SCOPES,
     callback: async (resp) => {
       if(resp.error){ setSyncStatus('ログイン失敗'); return; }
       accessToken = resp.access_token;
@@ -235,205 +227,184 @@ window.onload = function(){
     }
   });
   const saved = localStorage.getItem('kk_token');
-  if(saved){ accessToken = saved; goTo('home'); ensureSheet().then(loadFromSheet); }
+  if(saved){ accessToken=saved; goTo('home'); ensureSheet().then(loadFromSheet); }
   else { goTo('login'); }
 };
 
 function signIn(){ tokenClient.requestAccessToken(); }
-function signOut(){
-  accessToken = null;
-  localStorage.removeItem('kk_token');
-  goTo('login');
-}
+function signOut(){ accessToken=null; localStorage.removeItem('kk_token'); goTo('login'); }
 
-// ── Sheets API helpers ────────────────────────────────────
 async function sheetsRequest(method, endpoint, body){
-  const res = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + endpoint, {
-    method, headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+  const res = await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+SHEET_ID+endpoint, {
+    method, headers:{'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'},
     body: body ? JSON.stringify(body) : undefined
   });
-  if(res.status === 401){ accessToken = null; localStorage.removeItem('kk_token'); goTo('login'); throw new Error('auth'); }
+  if(res.status===401){ accessToken=null; localStorage.removeItem('kk_token'); goTo('login'); throw new Error('auth'); }
   return res.json();
 }
 
 async function ensureSheet(){
-  const meta = await sheetsRequest('GET', '?fields=sheets.properties.title');
-  const exists = meta.sheets && meta.sheets.some(s => s.properties.title === SHEET_NAME);
+  const meta = await sheetsRequest('GET','?fields=sheets.properties.title');
+  const exists = meta.sheets && meta.sheets.some(s=>s.properties.title===SHEET_NAME);
   if(!exists){
-    await sheetsRequest('POST', ':batchUpdate', {
-      requests:[{ addSheet:{ properties:{ title: SHEET_NAME } } }]
-    });
-    // header row
-    await sheetsRequest('PUT', '/values/' + SHEET_NAME + '!A1:F1?valueInputOption=RAW', {
-      values:[['id','type','amount','cat','memo','date']]
-    });
+    await sheetsRequest('POST',':batchUpdate',{requests:[{addSheet:{properties:{title:SHEET_NAME}}}]});
+    await sheetsRequest('PUT','/values/'+SHEET_NAME+'!A1:F1?valueInputOption=RAW',{values:[['id','type','amount','cat','memo','date']]});
   }
 }
 
 async function loadFromSheet(){
   setSyncStatus('読み込み中...');
-  document.getElementById('sync-btn').disabled = true;
+  document.getElementById('sync-btn').disabled=true;
   try {
-    const res = await sheetsRequest('GET', '/values/' + SHEET_NAME + '!A2:F?majorDimension=ROWS');
-    const rows = res.values || [];
-    records = rows.filter(r => r[0]).map(r => ({
-      id: Number(r[0]), type: r[1], amount: Number(r[2]), cat: r[3], memo: r[4]||'', date: r[5]
-    }));
-    records.sort((a,b) => b.id - a.id);
-    localStorage.setItem('kk_records', JSON.stringify(records));
-    setSyncStatus('同期済み ' + new Date().toLocaleTimeString('ja-JP', {hour:'2-digit',minute:'2-digit'}));
+    const res = await sheetsRequest('GET','/values/'+SHEET_NAME+'!A2:F?majorDimension=ROWS');
+    const rows = res.values||[];
+    records = rows.filter(r=>r[0]).map(r=>({id:Number(r[0]),type:r[1],amount:Number(r[2]),cat:r[3],memo:r[4]||'',date:r[5]}));
+    records.sort((a,b)=>b.id-a.id);
+    localStorage.setItem('kk_records',JSON.stringify(records));
+    setSyncStatus('同期済み '+new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}));
     renderHome();
-  } catch(e){ if(e.message !== 'auth') setSyncStatus('読み込み失敗'); }
-  document.getElementById('sync-btn').disabled = false;
+  } catch(e){ if(e.message!=='auth') setSyncStatus('読み込み失敗'); }
+  document.getElementById('sync-btn').disabled=false;
 }
 
 async function appendToSheet(rec){
-  await sheetsRequest('POST', '/values/' + SHEET_NAME + '!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', {
-    values:[[rec.id, rec.type, rec.amount, rec.cat, rec.memo, rec.date]]
+  await sheetsRequest('POST','/values/'+SHEET_NAME+'!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS',{
+    values:[[rec.id,rec.type,rec.amount,rec.cat,rec.memo,rec.date]]
   });
 }
 
 async function deleteFromSheet(id){
-  // find row index
-  const res = await sheetsRequest('GET', '/values/' + SHEET_NAME + '!A:A');
-  const rows = res.values || [];
-  const rowIdx = rows.findIndex(r => String(r[0]) === String(id));
-  if(rowIdx < 0) return;
-  const meta = await sheetsRequest('GET', '?fields=sheets.properties');
-  const sheet = meta.sheets && meta.sheets.find(s => s.properties.title === SHEET_NAME);
+  const res = await sheetsRequest('GET','/values/'+SHEET_NAME+'!A:A');
+  const rows = res.values||[];
+  const rowIdx = rows.findIndex(r=>String(r[0])===String(id));
+  if(rowIdx<0) return;
+  const meta = await sheetsRequest('GET','?fields=sheets.properties');
+  const sheet = meta.sheets&&meta.sheets.find(s=>s.properties.title===SHEET_NAME);
   if(!sheet) return;
-  const sheetId = sheet.properties.sheetId;
-  await sheetsRequest('POST', ':batchUpdate', {
-    requests:[{ deleteDimension:{ range:{ sheetId, dimension:'ROWS', startIndex: rowIdx, endIndex: rowIdx + 1 } } }]
+  await sheetsRequest('POST',':batchUpdate',{
+    requests:[{deleteDimension:{range:{sheetId:sheet.properties.sheetId,dimension:'ROWS',startIndex:rowIdx,endIndex:rowIdx+1}}}]
   });
 }
 
 async function syncAll(){
   setSyncStatus('同期中...');
-  document.getElementById('sync-btn').disabled = true;
+  document.getElementById('sync-btn').disabled=true;
   try {
-    // overwrite all data
-    await sheetsRequest('PUT', '/values/' + SHEET_NAME + '!A1:F1?valueInputOption=RAW', {
-      values:[['id','type','amount','cat','memo','date']]
-    });
-    // clear old data rows
-    await sheetsRequest('POST', '/values/' + SHEET_NAME + '!A2:F:clear', {});
-    if(records.length > 0){
-      const sorted = [...records].sort((a,b) => a.id - b.id);
-      await sheetsRequest('POST', '/values/' + SHEET_NAME + '!A2:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', {
-        values: sorted.map(r => [r.id, r.type, r.amount, r.cat, r.memo, r.date])
+    await sheetsRequest('PUT','/values/'+SHEET_NAME+'!A1:F1?valueInputOption=RAW',{values:[['id','type','amount','cat','memo','date']]});
+    await sheetsRequest('POST','/values/'+SHEET_NAME+'!A2:F:clear',{});
+    if(records.length>0){
+      const sorted=[...records].sort((a,b)=>a.id-b.id);
+      await sheetsRequest('POST','/values/'+SHEET_NAME+'!A2:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS',{
+        values:sorted.map(r=>[r.id,r.type,r.amount,r.cat,r.memo,r.date])
       });
     }
-    setSyncStatus('同期済み ' + new Date().toLocaleTimeString('ja-JP', {hour:'2-digit',minute:'2-digit'}));
-  } catch(e){ if(e.message !== 'auth') setSyncStatus('同期失敗'); }
-  document.getElementById('sync-btn').disabled = false;
+    setSyncStatus('同期済み '+new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}));
+  } catch(e){ if(e.message!=='auth') setSyncStatus('同期失敗'); }
+  document.getElementById('sync-btn').disabled=false;
 }
 
-function setSyncStatus(msg){ document.getElementById('sync-status').textContent = msg; }
+function setSyncStatus(msg){ document.getElementById('sync-status').textContent=msg; }
 
-// ── App logic ────────────────────────────────────────────
 function goTo(s){
-  document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
-  document.getElementById('s-' + s).classList.add('active');
-  if(s === 'home')  renderHome();
-  if(s === 'chart') renderCharts();
+  document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active'));
+  document.getElementById('s-'+s).classList.add('active');
+  if(s==='home') renderHome();
+  if(s==='chart') renderCharts();
 }
 
-function changeMonth(d){ viewMonth += d; if(viewMonth>12){viewMonth=1;viewYear++;} if(viewMonth<1){viewMonth=12;viewYear--;} renderHome(); }
+function changeMonth(d){ viewMonth+=d; if(viewMonth>12){viewMonth=1;viewYear++;} if(viewMonth<1){viewMonth=12;viewYear--;} renderHome(); }
 
 function setType(t){
-  currentType = t;
-  document.getElementById('type-expense').classList.toggle('active', t === 'expense');
-  document.getElementById('type-income').classList.toggle('active', t === 'income');
-  populateCatSelect('inp-cat', t === 'expense' ? EXPENSE_CATS : INCOME_CATS);
+  currentType=t;
+  document.getElementById('type-expense').classList.toggle('active',t==='expense');
+  document.getElementById('type-income').classList.toggle('active',t==='income');
+  populateCatSelect('inp-cat',t==='expense'?EXPENSE_CATS:INCOME_CATS);
 }
 
-function populateCatSelect(id, cats){
-  const s = document.getElementById(id); s.innerHTML = '';
-  cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; s.appendChild(o); });
+function populateCatSelect(id,cats){
+  const s=document.getElementById(id); s.innerHTML='';
+  cats.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; s.appendChild(o); });
 }
 
 function monthRecords(y,m){ return records.filter(r=>{ const[ry,rm]=r.date.split('-').map(Number); return ry===y&&rm===m; }); }
 
 async function addRecord(){
-  const amt = parseFloat(document.getElementById('inp-amount').value);
+  const amt=parseFloat(document.getElementById('inp-amount').value);
   if(!amt||amt<=0){ alert('金額を入力してください'); return; }
-  const rec = { id: Date.now(), type: currentType, amount: amt, cat: document.getElementById('inp-cat').value, memo: document.getElementById('inp-memo').value.trim(), date: document.getElementById('inp-date').value || new Date().toISOString().slice(0,10) };
+  const rec={id:Date.now(),type:currentType,amount:amt,cat:document.getElementById('inp-cat').value,memo:document.getElementById('inp-memo').value.trim(),date:document.getElementById('inp-date').value||new Date().toISOString().slice(0,10)};
   records.unshift(rec);
-  localStorage.setItem('kk_records', JSON.stringify(records));
-  document.getElementById('inp-amount').value = '';
-  document.getElementById('inp-memo').value = '';
+  localStorage.setItem('kk_records',JSON.stringify(records));
+  document.getElementById('inp-amount').value='';
+  document.getElementById('inp-memo').value='';
   goTo('home');
-  // async save to sheet
   if(accessToken){
     setSyncStatus('保存中...');
-    document.getElementById('sync-btn').disabled = true;
-    try { await appendToSheet(rec); setSyncStatus('同期済み ' + new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})); }
+    document.getElementById('sync-btn').disabled=true;
+    try { await appendToSheet(rec); setSyncStatus('同期済み '+new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})); }
     catch(e){ if(e.message!=='auth') setSyncStatus('保存失敗（手動同期してください）'); }
-    document.getElementById('sync-btn').disabled = false;
+    document.getElementById('sync-btn').disabled=false;
   }
 }
 
 async function deleteRecord(id){
   if(!confirm('この記録を削除しますか？')) return;
-  records = records.filter(r => r.id !== id);
-  localStorage.setItem('kk_records', JSON.stringify(records));
+  records=records.filter(r=>r.id!==id);
+  localStorage.setItem('kk_records',JSON.stringify(records));
   renderHome();
   if(accessToken){
     setSyncStatus('削除中...');
-    try { await deleteFromSheet(id); setSyncStatus('同期済み ' + new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})); }
+    try { await deleteFromSheet(id); setSyncStatus('同期済み '+new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})); }
     catch(e){ if(e.message!=='auth') setSyncStatus('削除失敗（手動同期してください）'); }
   }
 }
 
 function renderHome(){
-  document.getElementById('home-month-lbl').textContent = monthLabel(viewYear, viewMonth);
-  const recs = monthRecords(viewYear, viewMonth);
-  let income = 0, expense = 0;
-  recs.forEach(r => r.type === 'income' ? income += r.amount : expense += r.amount);
-  document.getElementById('h-income').textContent  = fmt(income);
-  document.getElementById('h-expense').textContent = fmt(expense);
-  document.getElementById('h-balance').textContent = fmt(income - expense);
-  const pct = income > 0 ? Math.min(100, Math.round(expense/income*100)) : 0;
-  const fill = document.getElementById('h-pfill');
-  fill.style.width = pct + '%';
-  fill.style.background = pct > 90 ? '#D85A30' : pct > 70 ? '#BA7517' : '#1D9E75';
-  document.getElementById('h-pct-lbl').textContent = '収入に対する支出: ' + pct + '%';
-  const list = document.getElementById('home-list'); list.innerHTML = '';
-  if(recs.length === 0){ list.innerHTML = '<div class="empty">まだ記録がありません</div>'; return; }
-  recs.forEach(r => {
-    const isExp = r.type === 'expense';
-    const ic = CAT_ICONS[r.cat] || 'ti-dots';
-    const col = isExp ? 'var(--red-bg)' : 'var(--green-bg)';
-    const icol= isExp ? 'var(--red-text)' : 'var(--green-text)';
-    const d = document.createElement('div'); d.className = 'item';
-    d.innerHTML = `<div class="item-icon" style="background:${col}"><i class="ti ${ic}" style="color:${icol}"></i></div><div class="item-info"><div class="name">${r.cat}${r.memo?' — '+r.memo:''}</div><div class="date">${r.date}</div></div><div class="item-amount" style="color:${icol}">${isExp?'-':'+'}${fmt(r.amount)}</div><button class="del-btn" onclick="deleteRecord(${r.id})"><i class="ti ti-trash"></i></button>`;
+  document.getElementById('home-month-lbl').textContent=monthLabel(viewYear,viewMonth);
+  const recs=monthRecords(viewYear,viewMonth);
+  let income=0,expense=0;
+  recs.forEach(r=>r.type==='income'?income+=r.amount:expense+=r.amount);
+  document.getElementById('h-income').textContent=fmt(income);
+  document.getElementById('h-expense').textContent=fmt(expense);
+  document.getElementById('h-balance').textContent=fmt(income-expense);
+  const pct=income>0?Math.min(100,Math.round(expense/income*100)):0;
+  const fill=document.getElementById('h-pfill');
+  fill.style.width=pct+'%';
+  fill.style.background=pct>90?'#D85A30':pct>70?'#BA7517':'#1D9E75';
+  document.getElementById('h-pct-lbl').textContent='収入に対する支出: '+pct+'%';
+  const list=document.getElementById('home-list'); list.innerHTML='';
+  if(recs.length===0){ list.innerHTML='<div class="empty">まだ記録がありません</div>'; return; }
+  recs.forEach(r=>{
+    const isExp=r.type==='expense';
+    const ic=CAT_ICONS[r.cat]||'ti-dots';
+    const col=isExp?'var(--red-bg)':'var(--green-bg)';
+    const icol=isExp?'var(--red-text)':'var(--green-text)';
+    const d=document.createElement('div'); d.className='item';
+    d.innerHTML=`<div class="item-icon" style="background:${col}"><i class="ti ${ic}" style="color:${icol}"></i></div><div class="item-info"><div class="name">${r.cat}${r.memo?' — '+r.memo:''}</div><div class="date">${r.date}</div></div><div class="item-amount" style="color:${icol}">${isExp?'-':'+'}${fmt(r.amount)}</div><button class="del-btn" onclick="deleteRecord(${r.id})"><i class="ti ti-trash"></i></button>`;
     list.appendChild(d);
   });
 }
 
 function renderCharts(){
-  const now = new Date(); const y = now.getFullYear(), m = now.getMonth()+1;
-  document.getElementById('chart-month-lbl').textContent = monthLabel(y,m);
-  const recs = monthRecords(y,m);
-  const catMap = {};
+  const now=new Date(); const y=now.getFullYear(),m=now.getMonth()+1;
+  document.getElementById('chart-month-lbl').textContent=monthLabel(y,m);
+  const recs=monthRecords(y,m);
+  const catMap={};
   recs.filter(r=>r.type==='expense').forEach(r=>catMap[r.cat]=(catMap[r.cat]||0)+r.amount);
-  const cats = Object.keys(catMap), vals = cats.map(c=>catMap[c]), colors = cats.map((_,i)=>CAT_COLORS[i%CAT_COLORS.length]);
+  const cats=Object.keys(catMap),vals=cats.map(c=>catMap[c]),colors=cats.map((_,i)=>CAT_COLORS[i%CAT_COLORS.length]);
   if(pieChart) pieChart.destroy();
-  pieChart = new Chart(document.getElementById('pie-chart'),{ type:'doughnut', data:{labels:cats,datasets:[{data:vals,backgroundColor:colors,borderWidth:0}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}} });
-  const legend = document.getElementById('pie-legend'); legend.innerHTML='';
-  const total = vals.reduce((a,b)=>a+b,0);
+  pieChart=new Chart(document.getElementById('pie-chart'),{type:'doughnut',data:{labels:cats,datasets:[{data:vals,backgroundColor:colors,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+  const legend=document.getElementById('pie-legend'); legend.innerHTML='';
+  const total=vals.reduce((a,b)=>a+b,0);
   cats.forEach((c,i)=>{ const pct=total>0?Math.round(vals[i]/total*100):0; legend.innerHTML+=`<span><span class="legend-dot" style="background:${colors[i]}"></span>${c} ${pct}%</span>`; });
   const months=[],incArr=[],expArr=[];
   for(let i=5;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); const dy=d.getFullYear(),dm=d.getMonth()+1; months.push(dm+'月'); const mr=monthRecords(dy,dm); let inc=0,exp=0; mr.forEach(r=>r.type==='income'?inc+=r.amount:exp+=r.amount); incArr.push(inc);expArr.push(exp); }
   if(barChart) barChart.destroy();
-  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
-  barChart = new Chart(document.getElementById('bar-chart'),{ type:'bar', data:{labels:months,datasets:[{label:'収入',data:incArr,backgroundColor:'#5DCAA5',borderWidth:0},{label:'支出',data:expArr,backgroundColor:'#F0997B',borderWidth:0}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:11},color:isDark?'#888':'#999'}},y:{ticks:{callback:v=>v===0?'0':'¥'+(v/10000).toFixed(0)+'万',font:{size:10},color:isDark?'#888':'#999'},grid:{color:isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.06)'}}}} });
+  const isDark=matchMedia('(prefers-color-scheme: dark)').matches;
+  barChart=new Chart(document.getElementById('bar-chart'),{type:'bar',data:{labels:months,datasets:[{label:'収入',data:incArr,backgroundColor:'#5DCAA5',borderWidth:0},{label:'支出',data:expArr,backgroundColor:'#F0997B',borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:11},color:isDark?'#888':'#999'}},y:{ticks:{callback:v=>v===0?'0':'¥'+(v/10000).toFixed(0)+'万',font:{size:10},color:isDark?'#888':'#999'},grid:{color:isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.06)'}}}}});
 }
 
-// init
-document.getElementById('inp-date').value = new Date().toISOString().slice(0,10);
-populateCatSelect('inp-cat', EXPENSE_CATS);
+document.getElementById('inp-date').value=new Date().toISOString().slice(0,10);
+populateCatSelect('inp-cat',EXPENSE_CATS);
 </script>
 </body>
 </html>
